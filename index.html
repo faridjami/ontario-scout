@@ -3,111 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ontario WMU & Crown Land Overlay Tool</title>
-    <!-- Leaflet CSS for Maps -->
-    <link rel="stylesheet" href="https://unpkg.com" />
+    <title>Ontario Crown Land & WMU Finder</title>
+    
+    <!-- 1. Stable, Unbroken Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <style>
-        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        #map { height: 100vh; width: 100vw; }
-        .control-panel {
-            position: absolute; top: 10px; left: 10px; z-index: 1000;
-            background: white; padding: 15px; border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 300px;
+        html, body, #map { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: #dddddd;
         }
-        h3 { margin: 0 0 10px 0; font-size: 16px; color: #2c3e50; }
-        .layer-toggle { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 14px; }
-        .info-box {
-            margin-top: 12px; padding: 10px; background: #f8f9fa;
-            border-left: 4px solid #27ae60; border-radius: 4px; font-size: 13px; display: none;
+        #search-container {
+            position: absolute; 
+            top: 10px; 
+            left: 50px; 
+            z-index: 1000;
+            background: white; 
+            padding: 10px; 
+            border-radius: 5px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-        .gps-btn {
-            width: 100%; margin-top: 10px; padding: 10px;
-            background-color: #2980b9; color: white; border: none;
-            border-radius: 4px; font-weight: bold; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 6px;
-        }
-        .gps-btn:hover { background-color: #3498db; }
     </style>
 </head>
 <body>
 
-    <div class="control-panel">
-        <h3>Ontario Scout Overlay</h3>
-        <div class="layer-toggle">
-            <input type="checkbox" id="wmuCheck" checked>
-            <label for="wmuCheck">🟢 Show WMU Boundaries</label>
-        </div>
-        <div class="layer-toggle">
-            <input type="checkbox" id="crownCheck" checked>
-            <label for="crownCheck">👑 Show Crown Land (General Use)</label>
-        </div>
-        <button class="gps-btn" id="locateBtn">📍 Find My Location</button>
-        <div id="infoBox" class="info-box"></div>
+    <div id="search-container">
+        <input type="text" id="wmu-input" placeholder="Enter WMU (e.g., 47)">
+        <button onclick="searchWMU()">Filter</button>
     </div>
 
+    <!-- The Map Container -->
     <div id="map"></div>
 
-    <!-- Leaflet JS Library -->
-    <script src="https://unpkg.com"></script>
-    <script>
-        const map = L.map('map').setView([44.80, -79.30], 9);
+    <!-- 2. Stable, Unbroken Leaflet Engine -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+    <!-- 3. Your Local Data Arrays (Loaded BEFORE app.js so variables exist) -->
+    <script src="wmu.js"></script>
+    <script src="crown.js"></script>
+    
+    <!-- 4. Main App Engine Application Logic -->
+    <script src="app.js"></script>
 
-        let wmuLayer, crownLayer;
-        let userLocationMarker = null;
-
-        function showUnitDetails(name, type, limit) {
-            const box = document.getElementById('infoBox');
-            box.style.display = 'block';
-            box.innerHTML = `<strong>Selected:</strong> ${name}<br><strong>Type:</strong> ${type}<br><strong>Grouse Limit:</strong> ${limit}`;
-        }
-
-        document.getElementById('wmuCheck').addEventListener('change', (e) => {
-            if (e.target.checked) map.addLayer(wmuLayer); else map.removeLayer(wmuLayer);
-        });
-        document.getElementById('crownCheck').addEventListener('change', (e) => {
-            if (e.target.checked) map.addLayer(crownLayer); else map.removeLayer(crownLayer);
-        });
-
-        document.getElementById('locateBtn').addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                alert("Geolocation is not supported by your browser.");
-                return;
-            }
-            document.getElementById('locateBtn').innerText = "🔄 Locating...";
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    map.setView([lat, lng], 13);
-                    if (userLocationMarker) {
-                        userLocationMarker.setLatLng([lat, lng]);
-                    } else {
-                        userLocationMarker = L.marker([lat, lng]).addTo(map)
-                            .bindPopup("<b>You are here</b>").openPopup();
-                    }
-                    document.getElementById('locateBtn').innerText = "📍 Find My Location";
-                },
-                (error) => {
-                    alert("Unable to retrieve position.");
-                    document.getElementById('locateBtn').innerText = "📍 Find My Location";
-                },
-                { enableHighAccuracy: true }
-            );
-        });
-
-        wmuLayer = L.circle([44.90, -78.50], {radius: 40000, color: 'green', fillOpacity: 0.1}).addTo(map)
-            .bindPopup("WMU 60")
-            .on('click', () => showUnitDetails("WMU 60 (Bancroft/Kawarthas)", "Mixed Forest Transition Zone", "5 per day"));
-
-        crownLayer = L.polygon([
-            [44.85, -78.45], [44.95, -78.45], [44.92, -78.35], [44.82, -78.38]
-        ], {color: 'purple', fillColor: '#9b59b6', fillOpacity: 0.4}).addTo(map)
-            .bindPopup("👑 General Use Crown Land Forest Block");
-    </script>
 </body>
 </html>
